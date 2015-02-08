@@ -1,5 +1,6 @@
 # Vincenty
-Calculate metric distance, buffer and area for lat/lon coordinates using Vincently method
+Calculate metric distance, buffer and area for lat/lon coordinates using Vincently method.
+
 Python implementation of java script code published [here] (http://www.movable-type.co.uk/scripts/latlong-vincenty.html):
 
 ## Dependencies
