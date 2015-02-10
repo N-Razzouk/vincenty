@@ -73,11 +73,11 @@ def make_buffer(point, m, in_srs="WGS 1984", complex=False, n=50):
             arr.append(arcpy.Point(direct['lon2'], direct['lat2']))
         buffer_geom = arcpy.Polygon(arr, srs)
     else:
-        x1, y1 = geo.Direct(y, x, 0, m)
-        x2, y2 = geo.Direct(y, x, 90, m)
+        direct1 = geo.Direct(y, x, 0, m)
+        direct2 = geo.Direct(y, x, 90, m)
 
-        dy = y1 - y
-        dx = x2 - x
+        dy = direct1['lat2'] - y
+        dx = direct2['lon2'] - x
 
         d = (dx + dy)/2
 
@@ -133,5 +133,28 @@ def get_area(point, height, width, in_srs="WGS 1984"):
 
     #a = d1 * d2
 
-    return a
+    return a['area']
+
+
+def get_distance(point1, point2, in_srs="WGS 1984"):
+
+    x1 = point1.X
+    y1 = point1.Y
+
+    x2 = point2.X
+    y2 = point2.Y
+
+    try:
+        a, b = get_axis(in_srs)
+    except TypeError:
+        return None
+
+    f = (a-b)/a  # flattening
+
+    geo = Geodesic(a, f)
+
+    inverse = geo.Inverse(y1, x1, y2, x2)
+    d = inverse['s12']
+    return d
+
 

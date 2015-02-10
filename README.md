@@ -21,7 +21,7 @@ distance =  geodesy.get_distance(point1, point2)  # returns distance between poi
 
 ```python
 import arcpy
-import vincenty
+import geodesy
 
 point = arcpy.Point(5,6)  # default WGS 1984
 radius = 50000  # radius in meter
@@ -36,13 +36,13 @@ import geodesy
 point = arcpy.Point(5,6)  # default WGS 1984
 radius = 50000  # radius in meter
 
-buffer_geom =  geodesy.get_buffer(point,radius,True)  # returns a polygon geometry (default 50 vertexes)
+buffer_geom =  geodesy.make_buffer(point,radius,complex=True)  # returns a polygon geometry (default 50 vertexes)
 ```
 
 
 ```python
 import arcpy
-import vincenty
+import geodesy
 
 point = arcpy.Point(5,6)  # default WGS 1984
 pixel_size =  0.00027777778  # This is the pixel size of a Hanson pixel
