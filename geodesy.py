@@ -120,6 +120,19 @@ def get_area(point, height, width, in_srs="WGS 1984"):
 
     return a
 
-import geographiclib
+def get_distance(point1, point2, in_srs="WGS 1984"):
 
-geographiclib.
+    x1 = point1.X
+    y1 = point1.Y
+
+    x2 = point2.X
+    y2 = point2.Y
+
+    try:
+        a, b = get_axis(in_srs)
+    except TypeError:
+        return None
+
+    d = vincenty.inverse(x1, y1, x2, y2, a, b)
+
+    return d

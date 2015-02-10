@@ -138,15 +138,19 @@ def direct(x1, y1, d, a1, a=6378137.0, b=6356752.314245179, bearing=False):
 
     s = d / (b*A)
 
-    while True:
+    for i in range(100):
         cos2sM = math.cos(2*s1 + s)
         sins = math.sin(s)
         coss = math.cos(s)
         ds = B*sins*(cos2sM+B/4*(coss*(-1+2*cos2sM*cos2sM)-B/6*cos2sM*(-3+4*sins*sins)*(-3+4*cos2sM*cos2sM)))
         s_ = s
         s = d / (b*A) + ds
-        if abs(s-s_) > 1e-12:
+        if abs(s - s_) < 1e-12:
             break
+
+    if i == 99:
+        print 'Formula failed to converge'
+
 
     tmp = sinU1*sins - cosU1*coss*cosa1
     lat2 = math.atan2(sinU1*coss + cosU1*sins*cosa1, (1-f)*math.sqrt(sina*sina + tmp*tmp))

@@ -35,7 +35,7 @@ import geodesy
 point = arcpy.Point(5,6)  # default WGS 1984
 radius = 50000  # radius in meter
 
-buffer_geom =  geodesy.get_buffer(point,radius,True)  # returns a polygon geometry (default 50 vertexes)
+buffer_geom =  geodesy.make_buffer(point,radius,complex=True)  # returns a polygon geometry (default 50 vertexes)
 ```
 
 
