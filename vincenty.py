@@ -1,44 +1,45 @@
-import arcpy
+#    Vincenty's formulae calculate the distance between two points (inverse solution)
+#    and the destination with given distance & bearing from start point (direct solution) on the surface of a spheroid
+#    Its accuracy is within 0.5 mm distance, 0.000015" bearing, on the ellipsoid being used.
+#    Methods were first published in 1975: http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf
+#    This is a Python implementation of a JavaScript source code by Chris Veness (Creative Commons Attribution license)
+#    http://www.movable-type.co.uk/scripts/latlong-vincenty.html
+
 import math
-import sys
 
-def get_distance(point1, point2, in_srs="WGS 1984", bearing=False):
-    """Return distance, initial, and final bearing between two points (Vincenty method)
+def inverse(x1, y1, x2, y2, a=6378137.0, b=6356752.314245179, bearing=False):
+    """
+    Return distance/bearing between two points (Vincenty's inverse solution)
 
-    Vincenty's solution for the distance between points on an ellipsoidal earth model
-    is accurate to within 0.5 mm distance, 0.000015" bearing, on the ellipsoid being used.
-    This code is a python implementation of code found here
-    http://www.movable-type.co.uk/scripts/latlong-vincenty.html
-
-    @type  point1: arcpy.Point
-    @param point1: Point(lon,lat)
-    @type  point2: arcpy.Point
-    @param point2 Point(lon,lat)
-    @type  in_sra: str
-    @param in_srs: Spatial reference system name or path to prj file, default "WGS 1984"
-    @rtype:   number
-    @return:  distance (m)
+    @type  x1: float
+    @param x1: X (lon) Point 1
+    @type  y1: float
+    @param y1: Y (lat) Point 1
+    @type  x2: float
+    @param x2: X (lon) Point 2
+    @type  y2: float
+    @param y2: Y (lat) Point 2
+    @type  a: float
+    @param a: Major-axis ellipsoid
+    @type  b: float
+    @param b: Minor-axis ellipsoid
+    @type  bearing: bool
+    @param bearing: Return bearing
+    @rtype: float
+    @return: distance (m) [, forward azimuth (deg 0-360), reverse Azimuth (deg 0-360)]
     """
 
-    if in_srs == "WGS 1984":
-        a = 6378137.0  # major semi-axis of the ellipsoid
-        b = 6356752.314245179  # minor semi-axis of the ellipsoid
-    else:
-        try:
-            srs = arcpy.SpatialReference(in_srs)
-            a = srs.semiMajorAxis
-            b = srs.semiMinorAxis
-        except:
-            print "Spatial reference system in not well defined"
-            sys.exit(2)
+    if -180 >= x1 >= 180 or -180 >= x2 >= 180 or -90 >= y1 >= 90 or -90 >= y2 >= 90:
+        print "Wrong input coordinates"
+        return None
             
     f = (a-b)/a  # flattening
     
-    lat1 = math.radians(point1.Y)
-    lon1 = math.radians(point1.X)
+    lat1 = math.radians(y1)
+    lon1 = math.radians(x1)
 
-    lat2 = math.radians(point2.Y)
-    lon2 = math.radians(point2.X)
+    lat2 = math.radians(y2)
+    lon2 = math.radians(x2)
 
     L = lon2 - lon1
 
@@ -82,87 +83,84 @@ def get_distance(point1, point2, in_srs="WGS 1984", bearing=False):
 
     d = b*A*(s-ds)
 
-    fwdAz = math.atan2(cosU2*sinl,  cosU1*sinU2-sinU1*cosU2*cosl)
-    revAz = math.atan2(cosU1*sinl, -sinU1*cosU2+cosU1*sinU2*cosl)
+    fwdAz = math.degrees(math.atan2(cosU2*sinl,  cosU1*sinU2-sinU1*cosU2*cosl))
+    revAz = math.degrees(math.atan2(cosU1*sinl, -sinU1*cosU2+cosU1*sinU2*cosl))
 
     if bearing:
         return d, fwdAz, revAz
     else:
         return d
 
-def make_buffer(point, m, in_srs="WGS 1984"):
-    """Return a polygon geometry representing a buffer around a point with an approximate radius of [input value]
+def direct(x1, y1, d, a1, a=6378137.0, b=6356752.314245179, bearing=False):
+    """"
+    Return destination given distance & bearing from start point (Vincenty's direct solution)
 
-    Expect a point with lat/lon coordinates and buffer radius in meter
-    Buffer radius is converted into degree using Vincenty method in north-south and east-west direction
-    Final buffer is the mean radius (in degree) of north-south and east-west radius
-    It represents the input radius best, closest to the equator.
+    @type  x1: float
+    @param x1: X (lon) Point 1
+    @type  y1: float
+    @param y1: Y (lat) Point 1
+    @type  d: float
+    @param d: Distance (m)
+    @type  a1: float
+    @param a1: bearing (deg 0-360)
+    @type  a: float
+    @param a: Major-axis ellipsoid
+    @type  b: float
+    @param b: Minor-axis ellipsoid
+    @type  bearing: bool
+    @param bearing: Return bearing
+    @rtype: list
+    @return: X (lon), Y (lat) [, reverse azimuth (deg 0-360)]
 
-    @type  point: arcpy.Point
-    @param point: Point(lon,lat)
-    @type  m: number
-    @param m2 buffer radius (meter)
-    @type  in_sra: str
-    @param in_srs: Spatial reference system name or path to prj file, default "WGS 1984"
-    @rtype:   arcpy.geometry
-    @return:  Polygon geometry
     """
 
-    diff = 0.45  # proxy value, about 50000 m equator
+    if -180 >= x1 >= 180 or -90 >= y1 >= 90:
+        print "Wrong input coordinates"
+        return None
 
-    lat = point.Y
-    lon = point.X
+    f = (a-b)/a  # flattening
 
-    point_v = arcpy.Point(lon, lat + diff)
-    point_h = arcpy.Point(lon + diff, lat)
+    lat1 = math.radians(y1)
+    lon1 = math.radians(x1)
 
-    d_v = get_distance(point, point_v, in_srs, False)
-    d_h = get_distance(point, point_h, in_srs, False)
+    sina1 = math.sin(math.radians(a1))
+    cosa1 = math.cos(math.radians(a1))
 
-    deg_v = diff * m / d_v
-    deg_h = diff * m / d_h
+    tanU1 = (1-f) * math.tan(lat1)
+    cosU1 = 1 / math.sqrt((1 + tanU1*tanU1))
+    sinU1 = tanU1 * cosU1
+    s1 = math.atan2(tanU1, cosa1)
+    sina = cosU1 * sina1
+    cosSqa = 1 - sina*sina
+    uSq = cosSqa * (a*a - b*b) / (b*b)
+    A = 1 + uSq/16384*(4096+uSq*(-768+uSq*(320-175*uSq)))
+    B = uSq/1024 * (256+uSq*(-128+uSq*(74-47*uSq)))
 
-    deg = (deg_v + deg_h)/2
+    s = d / (b*A)
 
-    try:
-        srs = arcpy.SpatialReference(in_srs)
-    except:
-        print "Spatial reference system in not well defined"
-        sys.exit(2)
-    p_geom = arcpy.PointGeometry(point, srs)
-    buffer_geom = p_geom.buffer(deg)
-    
-    return buffer_geom
+    while True:
+        cos2sM = math.cos(2*s1 + s)
+        sins = math.sin(s)
+        coss = math.cos(s)
+        ds = B*sins*(cos2sM+B/4*(coss*(-1+2*cos2sM*cos2sM)-B/6*cos2sM*(-3+4*sins*sins)*(-3+4*cos2sM*cos2sM)))
+        s_ = s
+        s = d / (b*A) + ds
+        if abs(s-s_) > 1e-12:
+            break
 
-def get_area(point, height, width, in_srs="WGS 1984"):
-    """Return area of height and width in degree at a given point
+    tmp = sinU1*sins - cosU1*coss*cosa1
+    lat2 = math.atan2(sinU1*coss + cosU1*sins*cosa1, (1-f)*math.sqrt(sina*sina + tmp*tmp))
+    l = math.atan2(sins*sina1, cosU1*coss - sinU1*sins*cosa1)
+    C = f/16*cosSqa*(4+f*(4-3*cosSqa))
+    L = l - (1-C) * f * sina * (s + C*sins*(cos2sM+C*coss*(-1+2*cos2sM*cos2sM)))
+    lon2 = (lon1 + L + 3*math.pi)%(2*math.pi) - math.pi  # normalise to -180...+180
 
-    Expect a point with lat/lon coordinates and height and width in degree
-    Converts heights and width form degree to meters at the given location Vincenty method
-    Calculate area in square meters
+    revAz = math.degrees(math.atan2(sina, -tmp))
 
-    @type  point: arcpy.Point
-    @param point: Point(lon,lat)
-    @type  height: number
-    @param height: height (degree)
-    @type  width: number
-    @param width: width (degree)
-    @type  in_sra: str
-    @param in_srs: Spatial reference system name or path to prj file, default "WGS 1984"
-    @rtype:   number
-    @return:  Area in square meter
-    """
+    y2 = math.degrees(lat2)
+    x2 = math.degrees(lon2)
 
-    lat = point.Y
-    lon = point.X
-
-    point_v = arcpy.Point(lon, lat + width)
-    point_h = arcpy.Point(lon + height, lat)
-    
-    d_v = get_distance(point, point_v, in_srs, False)
-    d_h = get_distance(point, point_h, in_srs, False)
-
-    a = d_v * d_h
-
-    return a
-
+    if bearing:
+        return x2, y2, revAz
+    else:
+        return x2, y2
