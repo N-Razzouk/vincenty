@@ -1,5 +1,8 @@
 import arcpy
-import vincenty
+from geographiclib.geodesic import Geodesic
+
+def p(lat, lon):
+    return {'lat': lat, 'lon': lon}
 
 def get_axis(in_srs):
     """
@@ -58,17 +61,20 @@ def make_buffer(point, m, in_srs="WGS 1984", complex=False, n=50):
     except TypeError:
         return None
 
+    f = (a-b)/a  # flattening
+    geo = Geodesic(a, f)
+
     srs = arcpy.SpatialReference(in_srs)
 
     if complex:
         arr = arcpy.Array()
         for i in range(0, 360, 360/int(n)):
-            xi, yi = vincenty.direct(x, y, i, m, a, b)
-            arr.append(arcpy.Point(xi, yi))
+            direct = geo.Direct(y, x, i, m)
+            arr.append(arcpy.Point(direct['lon2'], direct['lat2']))
         buffer_geom = arcpy.Polygon(arr, srs)
     else:
-        x1, y1 = vincenty.direct(x, y, 0, m, a, b)
-        x2, y2 = vincenty.direct(x, y, 90, m, a, b)
+        x1, y1 = geo.Direct(y, x, 0, m)
+        x2, y2 = geo.Direct(y, x, 90, m)
 
         dy = y1 - y
         dx = x2 - x
@@ -113,13 +119,19 @@ def get_area(point, height, width, in_srs="WGS 1984"):
     except TypeError:
         return None
 
-    d1 = vincenty.inverse(x, y, x1, y1, a, b)
-    d2 = vincenty.inverse(x, y, x2, y2, a, b)
+    f = (a-b)/a  # flattening
 
-    a = d1 * d2
+    geo = Geodesic(a, f)
+
+    a = geo.Area([p(y, x), p(y1, x1), p(y2, x1), p(y2, x2)])
+
+    #inverse1 = geo.Inverse(y, x, y1, x1)
+    #inverse2 = geo.Inverse(y, x, y2, x2)
+
+    #d1 = inverse1['s12']
+    #d2 = inverse2['s12']
+
+    #a = d1 * d2
 
     return a
 
-import geographiclib
-
-geographiclib.
